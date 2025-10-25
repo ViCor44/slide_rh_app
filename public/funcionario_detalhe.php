@@ -164,8 +164,19 @@ try {
                         <dl>
                             <dt class="text-sm font-medium text-gray-500">Data de Contratação</dt>
                             <dd class="text-gray-900 mb-3"><?= htmlspecialchars(date('d/m/Y', strtotime($funcionario['data_contratacao']))) ?></dd>
+
+                            <?php if ($funcionario['departamento'] === 'Piscinas' && !empty($funcionario['sector_piscina'])): ?>
+                                <dt class="text-sm font-medium text-gray-500">Sector Piscina</dt>
+                                <dd class="text-gray-900 mb-3"><?= htmlspecialchars($funcionario['sector_piscina']) ?></dd>
+                            <?php endif; ?>
+
                             <dt class="text-sm font-medium text-gray-500">ID Cartão NFC</dt>
-                            <dd class="text-gray-900 font-mono"><?= htmlspecialchars($funcionario['nfc_card_id'] ?? 'N/A') ?></dd>
+                            <dd class="text-gray-900 font-mono mb-3"><?= htmlspecialchars($funcionario['nfc_card_id'] ?? 'N/A') ?></dd>
+                            
+                            <dt class="text-sm font-medium text-gray-500">Status Atual</dt>
+                            <dd class="font-semibold <?= ($funcionario['status_servico'] == 'Ao Serviço') ? 'text-green-600' : 'text-orange-600' ?>">
+                                <?= htmlspecialchars($funcionario['status_servico']) ?>
+                            </dd>
                         </dl>
                     </div>
                 </div>

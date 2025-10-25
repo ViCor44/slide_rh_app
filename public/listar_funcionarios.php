@@ -2,32 +2,77 @@
 require_once '../src/auth_guard.php';
 require_once '../config/db.php';
 
+// Obter os valores dos filtros (GET)
 $termo_pesquisa = trim($_GET['q'] ?? '');
+$status_filtro = trim($_GET['filtro_status'] ?? '');
+$sector_filtro = !empty($_GET['filtro_sector']) ? (int)$_GET['filtro_sector'] : null;
+
 $funcionarios = [];
+$erro_db = null; // Inicializar a variável de erro
 
 try {
-    // Query simplificada: vai buscar todos os funcionários ativos.
-    // A lógica de permissão foi REMOVIDA daqui.
-    $sql = "SELECT id, numero_funcionario, nome_completo, email_corporativo, cargo, departamento 
-            FROM funcionarios 
-            WHERE ativo = 1";
+    // Base da query com LEFT JOIN para aceder ao role_id do utilizador associado ao funcionário
+    $sql = "SELECT f.id, f.numero_funcionario, f.nome_completo, f.email_corporativo, f.cargo, f.departamento, f.sector_piscina, f.status_servico
+            FROM funcionarios f
+            LEFT JOIN utilizadores u ON f.id = u.funcionario_id
+            WHERE f.ativo = 1";
     $params = [];
 
-    // A lógica de pesquisa continua a funcionar normalmente
+    // Filtro de Pesquisa Geral (LIKE)
     if (!empty($termo_pesquisa)) {
-        $sql .= " AND (numero_funcionario LIKE ? OR nome_completo LIKE ? OR email_corporativo LIKE ? OR cargo LIKE ? OR departamento LIKE ?)";
+        // Adiciona parêntesis para garantir a prioridade do OR
+        $sql .= " AND (f.numero_funcionario LIKE ? OR f.nome_completo LIKE ? OR f.email_corporativo LIKE ? OR f.cargo LIKE ? OR f.departamento LIKE ?)";
         $like_term = "%{$termo_pesquisa}%";
+        // Adiciona o termo 5 vezes ao array de parâmetros
         array_push($params, $like_term, $like_term, $like_term, $like_term, $like_term);
     }
 
-    $sql .= " ORDER BY nome_completo ASC";
-    
+    // Filtro por Status de Serviço
+    if (!empty($status_filtro)) {
+        $sql .= " AND f.status_servico = ?";
+        $params[] = $status_filtro;
+    }
+
+    // Filtro por Sector Piscina
+    if ($sector_filtro !== null) {
+        // Garante que só filtra se o departamento for Piscinas
+        $sql .= " AND f.departamento = 'Piscinas' AND f.sector_piscina = ?";
+        $params[] = $sector_filtro;
+    }
+
+    // Lógica de Permissão para Manager/Supervisor
+    $logged_in_role_id = (int)$utilizador_logado['role_id'];
+
+    if ($logged_in_role_id === ROLE_SUPERVISOR) {
+        // Regra para Supervisor: Vê o seu departamento, mas EXCLUI os Managers.
+        $sql .= " AND f.departamento = ? AND (u.role_id IS NULL OR u.role_id != ?)";
+        $params[] = $_SESSION['user_departamento'] ?? ''; // Departamento do supervisor
+        $params[] = ROLE_MANAGER; // ID do Role Manager a excluir
+
+    } elseif ($logged_in_role_id === ROLE_MANAGER) {
+        // Regra para Manager: Vê todas as pessoas do seu departamento.
+        $sql .= " AND f.departamento = ?";
+        if (!empty($_SESSION['user_departamento'])) {
+            $params[] = $_SESSION['user_departamento']; // Departamento do manager
+        } else {
+            // Se o manager não tem departamento definido na sessão, não deve ver ninguém.
+            $sql .= " AND 1=0"; // Condição que nunca será verdadeira
+        }
+    }
+    // NOTA: Admins e RH não entram nestas condições `if/elseif`, por isso a query não é restrita por departamento para eles.
+
+    // Ordenação final
+    $sql .= " ORDER BY f.nome_completo ASC";
+
+    // Preparar e executar a query
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $funcionarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    $erro_db = "Erro ao carregar os dados dos funcionários: " . $e->getMessage();
+    // Registar o erro para diagnóstico, mas mostrar uma mensagem genérica
+    error_log("Erro na query de listar_funcionarios: " . $e->getMessage());
+    $erro_db = "Ocorreu um erro ao carregar os dados dos funcionários. Por favor, tente mais tarde.";
 }
 ?>
 <!DOCTYPE html>
@@ -58,24 +103,59 @@ try {
             </div>
         </div>
 
-        <div class="mb-8 bg-white p-4 rounded-lg shadow">
-            <form action="listar_funcionarios.php" method="GET" class="flex items-center gap-4">
-                <div class="relative w-full">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+        <div class="mb-8 bg-white p-6 rounded-lg shadow space-y-4">
+            <form action="listar_funcionarios.php" method="GET">
+                <div class="flex items-center gap-4">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                        <input 
+                            type="search" 
+                            name="q" 
+                            placeholder="Pesquisar funcionários..."
+                            value="<?= htmlspecialchars($_GET['q'] ?? '') ?>"
+                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
+                            autocomplete="off"
+                        >
                     </div>
-                    <input 
-                        type="search" 
-                        name="q" 
-                        placeholder="Pesquisar funcionários..."
-                        value="<?= htmlspecialchars($_GET['q'] ?? '') ?>"
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
-                        autocomplete="off"
-                    >
+                    <button type="button" id="toggle-filters-btn" class="flex-shrink-0 bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg hover:bg-gray-200 text-sm">
+                        Filtros Avançados
+                    </button>
+                    <a href="listar_funcionarios.php" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex-shrink-0">Limpar Tudo</a>
                 </div>
-                <a href="listar_funcionarios.php" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex-shrink-0">Limpar Pesquisa</a>
+                
+                <div id="advanced-filters" class="hidden pt-4 border-t space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="filtro_status" class="block text-xs font-medium text-gray-600 mb-1">Filtrar por Status</label>
+                            <select id="filtro_status" name="filtro_status" class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Todos os Status --</option>
+                                <option value="Ao Serviço" <?= (($status_filtro ?? '') == 'Ao Serviço') ? 'selected' : '' ?>>Ao Serviço</option>
+                                <option value="Baixa Médica" <?= (($status_filtro ?? '') == 'Baixa Médica') ? 'selected' : '' ?>>Baixa Médica</option>
+                                <option value="Férias" <?= (($status_filtro ?? '') == 'Férias') ? 'selected' : '' ?>>Férias</option>
+                                <option value="Licença" <?= (($status_filtro ?? '') == 'Licença') ? 'selected' : '' ?>>Licença</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filtro_sector" class="block text-xs font-medium text-gray-600 mb-1">Filtrar por Sector (Piscinas)</label>
+                            <input 
+                                type="number" 
+                                id="filtro_sector" 
+                                name="filtro_sector" 
+                                value="<?= htmlspecialchars($sector_filtro ?? '') ?>"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Nº Sector"
+                                min="1"
+                            >
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <button type="submit" class="bg-gray-700 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-800 text-sm">
+                            Aplicar Filtros
+                        </button>
+                    </div>
+                </div>
             </form>
         </div>
         <?php if (isset($erro_db)): ?>
@@ -142,6 +222,33 @@ try {
             </div>
         <?php endif; ?>
     </div>
+
+<script>
+    // Encontra o botão e a secção de filtros
+    const toggleButton = document.getElementById('toggle-filters-btn');
+    const filtersSection = document.getElementById('advanced-filters');
+
+    // Adiciona um 'ouvinte' para o evento de clique no botão
+    toggleButton.addEventListener('click', () => {
+        // Alterna a classe 'hidden' na secção de filtros
+        filtersSection.classList.toggle('hidden');
+        
+        // Opcional: Mudar o texto do botão (Ex: "Esconder Filtros")
+        if (filtersSection.classList.contains('hidden')) {
+            toggleButton.textContent = 'Filtros Avançados';
+        } else {
+            toggleButton.textContent = 'Esconder Filtros';
+        }
+    });
+
+    // Opcional: Manter os filtros visíveis se já estiverem a ser usados
+    // (Verifica se algum filtro avançado tem valor no URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('filtro_status') || urlParams.get('filtro_sector')) {
+        filtersSection.classList.remove('hidden');
+        toggleButton.textContent = 'Esconder Filtros';
+    }
+</script>
 
 </body>
 </html>

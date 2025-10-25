@@ -59,47 +59,139 @@ if (!$pode_editar) {
 
 
 // 3. Se as permissões foram validadas, continuar com o processamento do POST (se existir)
+// 2. PROCESSAR O FORMULÁRIO QUANDO FOR SUBMETIDO (MÉTODO POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // A lógica de UPDATE que já tínhamos, agora sabemos que só é executada por quem tem permissão
-    try {
-        $pdo->beginTransaction();
-        
-        // Atualizar a tabela `funcionarios`
-        $sql1 = "UPDATE funcionarios SET numero_funcionario = ?, nome_completo = ?, ... WHERE id = ?";
-        // ... (resto da lógica de update)
+    // Obter todos os dados do POST
+    $numero_funcionario = trim($_POST['numero_funcionario'] ?? '');
+    $nome_completo = trim($_POST['nome_completo'] ?? '');
+    $email_corporativo = trim($_POST['email_corporativo'] ?? '');
+    $cargo = trim($_POST['cargo'] ?? '');
+    $departamento = trim($_POST['departamento'] ?? '');
+    $sector_piscina = !empty($_POST['sector_piscina']) ? (int)$_POST['sector_piscina'] : null;
+    $data_contratacao = trim($_POST['data_contratacao'] ?? '');
+    $nfc_card_id = trim($_POST['nfc_card_id'] ?? '');
+    $status_servico = trim($_POST['status_servico'] ?? 'Ao Serviço');
 
-        // Apenas Admins e RH podem atualizar dados pessoais
-        if ($logged_in_role_id === ROLE_ADMIN || $logged_in_role_id === ROLE_RH) {
-            $sql2 = "UPDATE funcionarios_dados_pessoais SET nif = ?, ... WHERE funcionario_id = ?";
-            // ... (resto da lógica de update)
-        }
+    $nif = trim($_POST['nif'] ?? '');
+    $nss = trim($_POST['nss'] ?? '');
+    $cartao_cidadao = trim($_POST['cartao_cidadao'] ?? '');
+    $data_nascimento = trim($_POST['data_nascimento'] ?? '');
+    $telemovel = trim($_POST['telemovel'] ?? '');
+    $morada_completa = trim($_POST['morada_completa'] ?? '');
+    $iban = trim($_POST['iban'] ?? '');
 
-        $pdo->commit();
-        $successMessage = "Dados do funcionário atualizados com sucesso!";
-        
-        // REGISTAR O EVENTO
-        log_event(
-            $pdo,
-            'INFO',
-            'EMPLOYEE_UPDATE',
-            "O funcionário '" . $funcionario['nome_completo'] . "' (ID: {$funcionario_id_a_editar}) foi atualizado.",
-            $utilizador_logado['id'],
-            ['record_id' => $funcionario_id_a_editar]
-        );
+    // Validações (copiar as validações do adicionar_funcionario.php, se necessário)
+    if (empty($nome_completo)) $errors['nome_completo'] = 'O nome completo é obrigatório.';
+    if (empty($numero_funcionario)) $errors['numero_funcionario'] = 'O número de funcionário é obrigatório.';
+    // ... adicionar outras validações ...
 
-        // Recarregar os dados para mostrar as alterações no formulário
-        header("Location: editar_funcionario.php?id=" . $funcionario_id_a_editar . "&status=success");
-        exit;
+    // Validação da nova foto (se existir)
+    if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+        $foto_tmp_name = $_FILES['foto']['tmp_name'];
+        $foto_size = $_FILES['foto']['size'];
+        $foto_type = mime_content_type($foto_tmp_name);
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
 
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $errors['db'] = "Erro ao atualizar o funcionário: " . $e->getMessage();
+        if ($foto_size > 2097152) { $errors['foto'] = 'A foto não pode exceder 2MB.'; }
+        if (!in_array($foto_type, $allowed_types)) { $errors['foto'] = 'Formato inválido. Apenas JPG, PNG e GIF.';}
     }
-}
 
-// Mensagem de sucesso vinda do redirecionamento
-if (isset($_GET['status']) && $_GET['status'] === 'success') {
-    $successMessage = "Dados do funcionário atualizados com sucesso!";
+    if (empty($errors)) {
+        $pdo->beginTransaction();
+        try {
+            // 1. Atualizar a tabela `funcionarios` (informação geral)
+            $sql1 = "UPDATE funcionarios SET 
+                        numero_funcionario = ?, 
+                        nome_completo = ?, 
+                        email_corporativo = ?, 
+                        cargo = ?, 
+                        departamento = ?, 
+                        sector_piscina = ?, 
+                        data_contratacao = ?, 
+                        nfc_card_id = ?, 
+                        status_servico = ? 
+                     WHERE id = ?";
+            $stmt1 = $pdo->prepare($sql1);
+            $stmt1->execute([
+                $numero_funcionario, 
+                $nome_completo, 
+                $email_corporativo, 
+                $cargo, 
+                $departamento, 
+                $sector_piscina, 
+                $data_contratacao, 
+                $nfc_card_id, 
+                $status_servico, 
+                $funcionario_id_a_editar // ID do funcionário vindo do GET
+            ]);
+
+            // 2. Atualizar a tabela `funcionarios_dados_pessoais` (dados sensíveis)
+            // SÓ EXECUTAR SE O UTILIZADOR FOR ADMIN OU RH
+            if ((int)$utilizador_logado['role_id'] === ROLE_ADMIN || (int)$utilizador_logado['role_id'] === ROLE_RH) {
+                // Verificação extra para garantir que os campos foram enviados antes de tentar usá-los
+                // (necessário porque estes campos podem não existir no formulário para um Manager)
+                if (isset($_POST['nif'])) { 
+                    $sql2 = "UPDATE funcionarios_dados_pessoais SET
+                                nif = ?, 
+                                nss = ?, 
+                                cartao_cidadao = ?, 
+                                data_nascimento = ?, 
+                                telemovel = ?, 
+                                morada_completa = ?, 
+                                iban = ?
+                             WHERE funcionario_id = ?";
+                    $stmt2 = $pdo->prepare($sql2);
+                    $stmt2->execute([
+                        $nif, 
+                        $nss, 
+                        $cartao_cidadao, 
+                        $data_nascimento, 
+                        $telemovel, 
+                        $morada_completa, 
+                        $iban,
+                        $funcionario_id_a_editar // ID do funcionário vindo do GET
+                    ]);
+                }
+            }
+            
+            // 3. Lógica para atualizar a foto se uma nova foi enviada
+            if (isset($foto_tmp_name)) {
+                $foto_extension = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
+                $novo_nome_foto = $funcionario_id_a_editar . '.' . strtolower($foto_extension);
+                $caminho_destino = realpath(__DIR__ . '/../storage/fotos_funcionarios') . '/' . $novo_nome_foto;
+
+                // (Opcional: apagar a foto antiga antes de mover a nova)
+
+                if (move_uploaded_file($foto_tmp_name, $caminho_destino)) {
+                    $sql_update_foto = "UPDATE funcionarios SET foto_path = ? WHERE id = ?";
+                    $stmt_update = $pdo->prepare($sql_update_foto);
+                    $stmt_update->execute([$novo_nome_foto, $funcionario_id_a_editar]);
+                } else {
+                    throw new Exception("Não foi possível mover o novo ficheiro da foto.");
+                }
+            }
+
+            $pdo->commit();
+            $successMessage = "Dados do funcionário atualizados com sucesso!";
+            
+            // Recarregar os dados para mostrar as alterações no formulário (Redirecionar)
+            header("Location: editar_funcionario.php?id=" . $funcionario_id_a_editar . "&status=success");
+            exit;
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $errors['db'] = "Erro ao atualizar o funcionário: " . $e->getMessage();
+            // Recarregar os dados do funcionário para preencher o formulário novamente após erro
+            $stmt = $pdo->prepare("SELECT f.*, dp.* FROM funcionarios f LEFT JOIN funcionarios_dados_pessoais dp ON f.id = dp.funcionario_id WHERE f.id = ?");
+            $stmt->execute([$funcionario_id_a_editar]);
+            $funcionario = $stmt->fetch(PDO::FETCH_ASSOC); // Sobrescreve $funcionario com os dados atuais
+        }
+    } else {
+         // Se houver erros de validação, recarrega os dados do funcionário para preencher o formulário
+        $stmt = $pdo->prepare("SELECT f.*, dp.* FROM funcionarios f LEFT JOIN funcionarios_dados_pessoais dp ON f.id = dp.funcionario_id WHERE f.id = ?");
+        $stmt->execute([$funcionario_id_a_editar]);
+        $funcionario = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
 
 ?>
@@ -159,6 +251,21 @@ if (isset($_GET['status']) && $_GET['status'] === 'success') {
                     <div>
                         <label for="data_contratacao" class="block text-sm font-medium text-gray-700 mb-1">Data de Contratação</label>
                         <input type="date" id="data_contratacao" name="data_contratacao" value="<?= htmlspecialchars($funcionario['data_contratacao'] ?? '') ?>" class="w-full px-4 py-2 border rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="sector_piscina" class="block text-sm font-medium text-gray-700 mb-1">Sector (Piscinas)</label>
+                        <input type="number" id="sector_piscina" name="sector_piscina" value="<?= htmlspecialchars($funcionario['sector_piscina'] ?? '') ?>" class="w-full ..." min="1">
+                        <p class="text-xs text-gray-500 mt-1">Apenas se Departamento = Piscinas.</p>
+                    </div>
+
+                    <div>
+                        <label for="status_servico" class="block text-sm font-medium text-gray-700 mb-1">Status de Serviço</label>
+                        <select id="status_servico" name="status_servico" class="w-full ...">
+                            <option value="Ao Serviço" <?= ($funcionario['status_servico'] == 'Ao Serviço') ? 'selected' : '' ?>>Ao Serviço</option>
+                            <option value="Baixa Médica" <?= ($funcionario['status_servico'] == 'Baixa Médica') ? 'selected' : '' ?>>Baixa Médica</option>
+                            <option value="Férias" <?= ($funcionario['status_servico'] == 'Férias') ? 'selected' : '' ?>>Férias</option>
+                            <option value="Licença" <?= ($funcionario['status_servico'] == 'Licença') ? 'selected' : '' ?>>Licença</option>
+                        </select>
                     </div>
                     <div class="md:col-span-2">
                         <label for="nfc_card_id" class="block text-sm font-medium text-gray-700 mb-1">ID Cartão NFC</label>

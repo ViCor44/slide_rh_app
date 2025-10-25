@@ -16,6 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $departamento = trim($_POST['departamento'] ?? '');
     $data_contratacao = trim($_POST['data_contratacao'] ?? '');
     $nfc_card_id = trim($_POST['nfc_card_id'] ?? '');
+    $sector_piscina = !empty($_POST['sector_piscina']) ? (int)$_POST['sector_piscina'] : null;
+    $status_servico = trim($_POST['status_servico'] ?? 'Ao Serviço');
     
     $cartao_cidadao = trim($_POST['cartao_cidadao'] ?? '');
     $nif = trim($_POST['nif'] ?? '');
@@ -57,11 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Inserir na tabela `funcionarios`            
             $sql1 = "INSERT INTO funcionarios 
-                        (numero_funcionario, nome_completo, email_corporativo, cargo, departamento, data_contratacao, nfc_card_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)";
+                        (numero_funcionario, nome_completo, email_corporativo, cargo, departamento, data_contratacao, nfc_card_id, sector_piscina, status_servico) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                     
             $stmt1 = $pdo->prepare($sql1); // <-- ESTA É A LINHA QUE FALTAVA
-            $stmt1->execute([$numero_funcionario, $nome_completo, $email_corporativo, $cargo, $departamento, $data_contratacao, $nfc_card_id]);
+            $stmt1->execute([$numero_funcionario, $nome_completo, $email_corporativo, $cargo, $departamento, $data_contratacao, $nfc_card_id, $sector_piscina, $status_servico]);
 
             $funcionario_id = $pdo->lastInsertId();
 
@@ -172,9 +174,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
+                        <label for="sector_piscina" class="block text-sm font-medium text-gray-700 mb-1">Sector (Piscinas)</label>
+                        <input type="number" id="sector_piscina" name="sector_piscina" value="<?= htmlspecialchars($form_data['sector_piscina'] ?? '') ?>" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" min="1">
+                        <p class="text-xs text-gray-500 mt-1">Apenas preencher se Departamento = Piscinas.</p>
+                    </div>
+
+                    <div>
                         <label for="data_contratacao" class="block text-sm font-medium text-gray-700 mb-1">Data de Contratação</label>
                         <input type="date" id="data_contratacao" name="data_contratacao" value="<?= htmlspecialchars($form_data['data_contratacao'] ?? '') ?>" class="w-full px-4 py-2 border rounded-md <?= isset($errors['data_contratacao']) ? 'border-red-500' : 'border-gray-300' ?> focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         <?php if (isset($errors['data_contratacao'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['data_contratacao'] ?></p><?php endif; ?>
+                    </div>
+
+                    <div>
+                        <label for="status_servico" class="block text-sm font-medium text-gray-700 mb-1">Status de Serviço</label>
+                        <select id="status_servico" name="status_servico" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="Ao Serviço" <?= (($form_data['status_servico'] ?? 'Ao Serviço') == 'Ao Serviço') ? 'selected' : '' ?>>Ao Serviço</option>
+                            <option value="Baixa Médica" <?= (($form_data['status_servico'] ?? '') == 'Baixa Médica') ? 'selected' : '' ?>>Baixa Médica</option>
+                            <option value="Férias" <?= (($form_data['status_servico'] ?? '') == 'Férias') ? 'selected' : '' ?>>Férias</option>
+                            <option value="Licença" <?= (($form_data['status_servico'] ?? '') == 'Licença') ? 'selected' : '' ?>>Licença</option>
+                            </select>
                     </div>
 
                     <div>
