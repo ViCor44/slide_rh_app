@@ -2,8 +2,8 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Tempo de geração: 24-Out-2025 às 00:43
+-- Host: 127.0.0.1:3306
+-- Tempo de geração: 27-Out-2025 às 22:52
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.0.30
 
@@ -20,6 +20,32 @@ SET time_zone = "+00:00";
 --
 -- Banco de dados: `slide_app`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `agendamentos`
+--
+
+CREATE TABLE `agendamentos` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `funcionario_id` int(10) UNSIGNED NOT NULL COMMENT 'A quem pertence o evento',
+  `titulo` varchar(150) NOT NULL COMMENT 'Ex: Folga, Consulta Médica, Formação X',
+  `descricao` text DEFAULT NULL COMMENT 'Detalhes adicionais (opcional)',
+  `data_inicio` datetime NOT NULL COMMENT 'Data e hora de início',
+  `data_fim` datetime DEFAULT NULL COMMENT 'Data e hora de fim (opcional, pode ser igual a data_inicio)',
+  `tipo_evento` varchar(50) NOT NULL DEFAULT 'Geral' COMMENT 'Ex: Folga, Férias, Médico, Formação, Reunião',
+  `created_by_user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Quem registou o evento',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Extraindo dados da tabela `agendamentos`
+--
+
+INSERT INTO `agendamentos` (`id`, `funcionario_id`, `titulo`, `descricao`, `data_inicio`, `data_fim`, `tipo_evento`, `created_by_user_id`, `created_at`) VALUES
+(1, 4, 'Formação Salvamento Aquático', '', '2025-10-20 15:00:00', '2025-10-27 16:00:00', 'Geral', 1, '2025-10-25 21:30:18'),
+(2, 1, 'Baixa', '', '2025-10-27 00:00:00', '2025-10-30 23:59:00', 'Médico', 6, '2025-10-27 19:32:06');
 
 -- --------------------------------------------------------
 
@@ -73,7 +99,17 @@ INSERT INTO `avaliacao_respostas` (`id`, `avaliacao_id`, `metrica_id`, `pontuaca
 (7, 2, 2, 3, ''),
 (8, 2, 3, 3, ''),
 (9, 2, 4, 4, ''),
-(10, 2, 5, 4, '');
+(10, 2, 5, 4, ''),
+(11, 3, 1, 5, ''),
+(12, 3, 2, 4, ''),
+(13, 3, 3, 4, ''),
+(14, 3, 4, 4, ''),
+(15, 3, 5, 5, ''),
+(16, 4, 1, 4, ''),
+(17, 4, 2, 4, ''),
+(18, 4, 3, 3, ''),
+(19, 4, 4, 3, ''),
+(20, 4, 5, 4, '');
 
 -- --------------------------------------------------------
 
@@ -98,7 +134,9 @@ CREATE TABLE `avaliacoes` (
 
 INSERT INTO `avaliacoes` (`id`, `funcionario_id`, `avaliador_user_id`, `periodo`, `data_avaliacao`, `comentarios_finais`, `objetivos_futuros`, `status`) VALUES
 (1, 5, 6, 'Outubro', '2025-10-24', '', '', 'Concluída'),
-(2, 5, 7, 'Outubro', '2025-10-24', '', '', 'Concluída');
+(2, 5, 7, 'Outubro', '2025-10-24', '', '', 'Concluída'),
+(3, 1, 6, 'Outubro', '2025-10-25', '', '', 'Concluída'),
+(4, 6, 6, 'Outubro', '2025-10-27', '', '', 'Concluída');
 
 -- --------------------------------------------------------
 
@@ -113,6 +151,7 @@ CREATE TABLE `funcionarios` (
   `email_corporativo` varchar(255) DEFAULT NULL,
   `cargo` varchar(100) NOT NULL,
   `departamento` varchar(100) NOT NULL,
+  `sector_piscina` int(10) UNSIGNED DEFAULT NULL COMMENT 'Número do sector específico para quem trabalha nas Piscinas',
   `foto_path` varchar(255) DEFAULT NULL,
   `nfc_card_id` varchar(50) DEFAULT NULL,
   `data_contratacao` date NOT NULL,
@@ -125,13 +164,13 @@ CREATE TABLE `funcionarios` (
 -- Extraindo dados da tabela `funcionarios`
 --
 
-INSERT INTO `funcionarios` (`id`, `numero_funcionario`, `nome_completo`, `email_corporativo`, `cargo`, `departamento`, `foto_path`, `nfc_card_id`, `data_contratacao`, `ativo`, `created_at`, `updated_at`) VALUES
-(1, '101', 'Sofia Alves', 'sofia.alves@slideapp.pt', 'Diretora Geral', 'Administração', '1.jpg', NULL, '2020-01-15', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
-(2, '205', 'Ricardo Mendes', 'ricardo.mendes@slideapp.pt', 'Técnico de RH', 'Recursos Humanos', '2.jpg', NULL, '2021-03-22', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
-(3, '310', 'Joana Pinto', 'joana.pinto@slideapp.pt', 'Chefe de Equipa', 'Piscinas', '3.jpg', NULL, '2019-05-10', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
-(4, '311', 'Carlos Martins', 'carlos.martins@slideapp.pt', 'Nadador Salvador', 'Piscinas', '4.jpg', NULL, '2022-06-01', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
-(5, '452', 'Ana Pereira', 'ana.pereira@slideapp.pt', 'Operadora de Caixa', 'Restauração', NULL, NULL, '2023-04-12', 1, '2025-10-21 19:47:12', '2025-10-21 19:47:12'),
-(6, '999', 'Laura Neves', 'laura.neves@email.com', 'Chefe de Equipa', 'Restauração', NULL, NULL, '2025-10-21', 1, '2025-10-21 19:47:12', '2025-10-22 18:08:57');
+INSERT INTO `funcionarios` (`id`, `numero_funcionario`, `nome_completo`, `email_corporativo`, `cargo`, `departamento`, `sector_piscina`, `foto_path`, `nfc_card_id`, `data_contratacao`, `ativo`, `created_at`, `updated_at`) VALUES
+(1, '101', 'Sofia Alves', 'sofia.alves@slideapp.pt', 'Diretora Geral', 'Administração', NULL, '1.jpg', NULL, '2020-01-15', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
+(2, '205', 'Ricardo Mendes', 'ricardo.mendes@slideapp.pt', 'Técnico de RH', 'Recursos Humanos', NULL, '2.jpg', NULL, '2021-03-22', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
+(3, '310', 'Joana Pinto', 'joana.pinto@slideapp.pt', 'Chefe de Equipa', 'Piscinas', NULL, '3.jpg', NULL, '2019-05-10', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
+(4, '311', 'Carlos Martins', 'carlos.martins@slideapp.pt', 'Nadador Salvador', 'Piscinas', 3, '4.jpg', '', '2022-06-01', 1, '2025-10-21 19:47:12', '2025-10-25 13:45:54'),
+(5, '452', 'Ana Pereira', 'ana.pereira@slideapp.pt', 'Operadora de Caixa', 'Restauração', NULL, NULL, NULL, '2023-04-12', 1, '2025-10-21 19:47:12', '2025-10-21 19:47:12'),
+(6, '999', 'Laura Neves', 'laura.neves@email.com', 'Chefe de Equipa', 'Restauração', NULL, NULL, NULL, '2025-10-21', 1, '2025-10-21 19:47:12', '2025-10-22 18:08:57');
 
 -- --------------------------------------------------------
 
@@ -157,7 +196,7 @@ CREATE TABLE `funcionarios_dados_pessoais` (
 INSERT INTO `funcionarios_dados_pessoais` (`funcionario_id`, `nif`, `nss`, `cartao_cidadao`, `data_nascimento`, `telemovel`, `morada_completa`, `iban`) VALUES
 (1, '234567890', NULL, NULL, NULL, '912345678', NULL, NULL),
 (3, '345678901', NULL, NULL, NULL, '923456789', NULL, NULL),
-(4, '456789012', NULL, NULL, NULL, '934567890', NULL, NULL);
+(4, '456789012', '', '', '0000-00-00', '934567890', '', '');
 
 -- --------------------------------------------------------
 
@@ -208,7 +247,14 @@ INSERT INTO `logs` (`id`, `level`, `event_type`, `message`, `user_id`, `ip_addre
 (9, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'joana.pinto@slideapp.pt\' fez login com sucesso.', 3, '::1', NULL, '2025-10-23 22:30:46'),
 (10, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-23 22:31:31'),
 (11, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'laura.neves@email.com\' fez login com sucesso.', 7, '::1', NULL, '2025-10-23 22:32:00'),
-(12, 'INFO', 'EVALUATION_CREATED', 'Nova avaliação para o funcionário \'Ana Pereira\' (ID: 5) foi submetida.', 7, '::1', NULL, '2025-10-23 22:32:46');
+(12, 'INFO', 'EVALUATION_CREATED', 'Nova avaliação para o funcionário \'Ana Pereira\' (ID: 5) foi submetida.', 7, '::1', NULL, '2025-10-23 22:32:46'),
+(13, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-24 20:45:12'),
+(14, 'INFO', 'EVALUATION_CREATED', 'Nova avaliação para o funcionário \'Sofia Alves\' (ID: 1) foi submetida.', 6, '::1', NULL, '2025-10-24 22:40:59'),
+(15, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'sofia.alves@slideapp.pt\' fez login com sucesso.', 1, '::1', NULL, '2025-10-25 12:57:12'),
+(16, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-27 19:23:38'),
+(17, 'INFO', 'EVALUATION_CREATED', 'Nova avaliação para o funcionário \'Laura Neves\' (ID: 6) foi submetida.', 6, '::1', NULL, '2025-10-27 19:59:44'),
+(18, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'joana.pinto@slideapp.pt\' fez login com sucesso.', 3, '::1', NULL, '2025-10-27 20:00:27'),
+(19, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-27 21:46:03');
 
 -- --------------------------------------------------------
 
@@ -267,6 +313,14 @@ INSERT INTO `utilizadores` (`id`, `nome`, `funcionario_id`, `email`, `password_h
 --
 -- Índices para tabelas despejadas
 --
+
+--
+-- Índices para tabela `agendamentos`
+--
+ALTER TABLE `agendamentos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_agendamento_funcionario` (`funcionario_id`),
+  ADD KEY `fk_agendamento_criador` (`created_by_user_id`);
 
 --
 -- Índices para tabela `avaliacao_metricas`
@@ -347,6 +401,12 @@ ALTER TABLE `utilizadores`
 --
 
 --
+-- AUTO_INCREMENT de tabela `agendamentos`
+--
+ALTER TABLE `agendamentos`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT de tabela `avaliacao_metricas`
 --
 ALTER TABLE `avaliacao_metricas`
@@ -356,13 +416,13 @@ ALTER TABLE `avaliacao_metricas`
 -- AUTO_INCREMENT de tabela `avaliacao_respostas`
 --
 ALTER TABLE `avaliacao_respostas`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de tabela `avaliacoes`
 --
 ALTER TABLE `avaliacoes`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de tabela `funcionarios`
@@ -380,7 +440,7 @@ ALTER TABLE `funcionario_documentos`
 -- AUTO_INCREMENT de tabela `logs`
 --
 ALTER TABLE `logs`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT de tabela `roles`
@@ -397,6 +457,13 @@ ALTER TABLE `utilizadores`
 --
 -- Restrições para despejos de tabelas
 --
+
+--
+-- Limitadores para a tabela `agendamentos`
+--
+ALTER TABLE `agendamentos`
+  ADD CONSTRAINT `fk_agendamento_criador` FOREIGN KEY (`created_by_user_id`) REFERENCES `utilizadores` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_agendamento_funcionario` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionarios` (`id`) ON DELETE CASCADE;
 
 --
 -- Limitadores para a tabela `avaliacao_respostas`
