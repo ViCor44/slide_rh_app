@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Tempo de geração: 27-Out-2025 às 22:52
+-- Tempo de geração: 28-Out-2025 às 00:01
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.0.30
 
@@ -45,7 +45,10 @@ CREATE TABLE `agendamentos` (
 
 INSERT INTO `agendamentos` (`id`, `funcionario_id`, `titulo`, `descricao`, `data_inicio`, `data_fim`, `tipo_evento`, `created_by_user_id`, `created_at`) VALUES
 (1, 4, 'Formação Salvamento Aquático', '', '2025-10-20 15:00:00', '2025-10-27 16:00:00', 'Geral', 1, '2025-10-25 21:30:18'),
-(2, 1, 'Baixa', '', '2025-10-27 00:00:00', '2025-10-30 23:59:00', 'Médico', 6, '2025-10-27 19:32:06');
+(2, 1, 'Baixa', '', '2025-10-27 00:00:00', '2025-10-30 23:59:00', 'Médico', 6, '2025-10-27 19:32:06'),
+(3, 5, 'Formação Gestão do Tempo', '', '2025-11-01 16:00:00', '2025-11-22 19:00:00', 'Formação', 6, '2025-10-27 22:58:25'),
+(4, 4, 'Formação Gestão do Tempo', '', '2025-11-01 16:00:00', '2025-11-22 19:00:00', 'Formação', 6, '2025-10-27 22:58:25'),
+(5, 6, 'Formação Gestão do Tempo', '', '2025-11-01 16:00:00', '2025-11-22 19:00:00', 'Formação', 6, '2025-10-27 22:58:25');
 
 -- --------------------------------------------------------
 
@@ -254,7 +257,8 @@ INSERT INTO `logs` (`id`, `level`, `event_type`, `message`, `user_id`, `ip_addre
 (16, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-27 19:23:38'),
 (17, 'INFO', 'EVALUATION_CREATED', 'Nova avaliação para o funcionário \'Laura Neves\' (ID: 6) foi submetida.', 6, '::1', NULL, '2025-10-27 19:59:44'),
 (18, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'joana.pinto@slideapp.pt\' fez login com sucesso.', 3, '::1', NULL, '2025-10-27 20:00:27'),
-(19, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-27 21:46:03');
+(19, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-27 21:46:03'),
+(20, 'INFO', 'GROUP_SCHEDULE_CREATED', 'Agendamento \'Formação Gestão do Tempo\' criado para múltiplos funcionários (Ana Pereira, Carlos Martins, Laura Neves).', 6, '::1', '{\"employee_ids\":[\"5\",\"4\",\"6\"]}', '2025-10-27 22:58:25');
 
 -- --------------------------------------------------------
 
@@ -404,7 +408,7 @@ ALTER TABLE `utilizadores`
 -- AUTO_INCREMENT de tabela `agendamentos`
 --
 ALTER TABLE `agendamentos`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de tabela `avaliacao_metricas`
@@ -440,7 +444,7 @@ ALTER TABLE `funcionario_documentos`
 -- AUTO_INCREMENT de tabela `logs`
 --
 ALTER TABLE `logs`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de tabela `roles`
