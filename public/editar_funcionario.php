@@ -70,8 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sector_piscina = !empty($_POST['sector_piscina']) ? (int)$_POST['sector_piscina'] : null;
     $data_contratacao = trim($_POST['data_contratacao'] ?? '');
     $nfc_card_id = trim($_POST['nfc_card_id'] ?? '');
-    $status_servico = trim($_POST['status_servico'] ?? 'Ao Serviço');
-
+    
     $nif = trim($_POST['nif'] ?? '');
     $nss = trim($_POST['nss'] ?? '');
     $cartao_cidadao = trim($_POST['cartao_cidadao'] ?? '');
@@ -108,8 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         departamento = ?, 
                         sector_piscina = ?, 
                         data_contratacao = ?, 
-                        nfc_card_id = ?, 
-                        status_servico = ? 
+                        nfc_card_id = ?,                         
                      WHERE id = ?";
             $stmt1 = $pdo->prepare($sql1);
             $stmt1->execute([
@@ -258,15 +256,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p class="text-xs text-gray-500 mt-1">Apenas se Departamento = Piscinas.</p>
                     </div>
 
-                    <div>
-                        <label for="status_servico" class="block text-sm font-medium text-gray-700 mb-1">Status de Serviço</label>
-                        <select id="status_servico" name="status_servico" class="w-full ...">
-                            <option value="Ao Serviço" <?= ($funcionario['status_servico'] == 'Ao Serviço') ? 'selected' : '' ?>>Ao Serviço</option>
-                            <option value="Baixa Médica" <?= ($funcionario['status_servico'] == 'Baixa Médica') ? 'selected' : '' ?>>Baixa Médica</option>
-                            <option value="Férias" <?= ($funcionario['status_servico'] == 'Férias') ? 'selected' : '' ?>>Férias</option>
-                            <option value="Licença" <?= ($funcionario['status_servico'] == 'Licença') ? 'selected' : '' ?>>Licença</option>
-                        </select>
-                    </div>
                     <div class="md:col-span-2">
                         <label for="nfc_card_id" class="block text-sm font-medium text-gray-700 mb-1">ID Cartão NFC</label>
                         <input type="text" id="nfc_card_id" name="nfc_card_id" value="<?= htmlspecialchars($funcionario['nfc_card_id'] ?? '') ?>" class="w-full px-4 py-2 border rounded-md">

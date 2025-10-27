@@ -1,10 +1,14 @@
 <?php
+// ----- FORÇAR EXIBIÇÃO DE ERROS (PARA DEBUG) -----
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+// ---------------------------------------------
 require_once '../src/auth_guard.php';
 require_once '../config/db.php';
 
 // Obter os valores dos filtros (GET)
 $termo_pesquisa = trim($_GET['q'] ?? '');
-$status_filtro = trim($_GET['filtro_status'] ?? '');
 $sector_filtro = !empty($_GET['filtro_sector']) ? (int)$_GET['filtro_sector'] : null;
 
 $funcionarios = [];
@@ -12,7 +16,7 @@ $erro_db = null; // Inicializar a variável de erro
 
 try {
     // Base da query com LEFT JOIN para aceder ao role_id do utilizador associado ao funcionário
-    $sql = "SELECT f.id, f.numero_funcionario, f.nome_completo, f.email_corporativo, f.cargo, f.departamento, f.sector_piscina, f.status_servico
+    $sql = "SELECT f.id, f.numero_funcionario, f.nome_completo, f.email_corporativo, f.cargo, f.departamento, f.sector_piscina
             FROM funcionarios f
             LEFT JOIN utilizadores u ON f.id = u.funcionario_id
             WHERE f.ativo = 1";
@@ -25,12 +29,6 @@ try {
         $like_term = "%{$termo_pesquisa}%";
         // Adiciona o termo 5 vezes ao array de parâmetros
         array_push($params, $like_term, $like_term, $like_term, $like_term, $like_term);
-    }
-
-    // Filtro por Status de Serviço
-    if (!empty($status_filtro)) {
-        $sql .= " AND f.status_servico = ?";
-        $params[] = $status_filtro;
     }
 
     // Filtro por Sector Piscina
@@ -127,16 +125,6 @@ try {
                 
                 <div id="advanced-filters" class="hidden pt-4 border-t space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label for="filtro_status" class="block text-xs font-medium text-gray-600 mb-1">Filtrar por Status</label>
-                            <select id="filtro_status" name="filtro_status" class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">-- Todos os Status --</option>
-                                <option value="Ao Serviço" <?= (($status_filtro ?? '') == 'Ao Serviço') ? 'selected' : '' ?>>Ao Serviço</option>
-                                <option value="Baixa Médica" <?= (($status_filtro ?? '') == 'Baixa Médica') ? 'selected' : '' ?>>Baixa Médica</option>
-                                <option value="Férias" <?= (($status_filtro ?? '') == 'Férias') ? 'selected' : '' ?>>Férias</option>
-                                <option value="Licença" <?= (($status_filtro ?? '') == 'Licença') ? 'selected' : '' ?>>Licença</option>
-                            </select>
-                        </div>
                         <div>
                             <label for="filtro_sector" class="block text-xs font-medium text-gray-600 mb-1">Filtrar por Sector (Piscinas)</label>
                             <input 

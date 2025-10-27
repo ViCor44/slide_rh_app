@@ -173,10 +173,6 @@ try {
                             <dt class="text-sm font-medium text-gray-500">ID Cartão NFC</dt>
                             <dd class="text-gray-900 font-mono mb-3"><?= htmlspecialchars($funcionario['nfc_card_id'] ?? 'N/A') ?></dd>
                             
-                            <dt class="text-sm font-medium text-gray-500">Status Atual</dt>
-                            <dd class="font-semibold <?= ($funcionario['status_servico'] == 'Ao Serviço') ? 'text-green-600' : 'text-orange-600' ?>">
-                                <?= htmlspecialchars($funcionario['status_servico']) ?>
-                            </dd>
                         </dl>
                     </div>
                 </div>

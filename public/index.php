@@ -1,6 +1,39 @@
 <?php
 require_once '../src/auth_guard.php';
 require_once '../config/db.php';
+
+// Inicializar variáveis para evitar erros
+$agenda_hoje = [];
+$error_message = null;
+
+// --- BUSCAR DADOS (DENTRO DE UM TRY...CATCH) ---
+try {
+    // Buscar Agendamentos de Hoje
+    $hoje_inicio = date('Y-m-d 00:00:00');
+    $hoje_fim = date('Y-m-d 23:59:59');
+    
+    // Query para buscar eventos que ocorrem hoje
+    $stmt_agenda = $pdo->prepare("
+        SELECT a.titulo, a.tipo_evento, f.nome_completo as funcionario_nome
+        FROM agendamentos a
+        JOIN funcionarios f ON a.funcionario_id = f.id
+        WHERE (a.data_inicio BETWEEN :inicio AND :fim) 
+           OR (a.data_fim BETWEEN :inicio AND :fim)
+           OR (a.data_inicio < :inicio AND a.data_fim > :fim) -- Eventos que abrangem o dia todo
+        ORDER BY a.data_inicio ASC
+    ");
+    // Usar bindParam para segurança
+    $stmt_agenda->bindParam(':inicio', $hoje_inicio);
+    $stmt_agenda->bindParam(':fim', $hoje_fim);
+    $stmt_agenda->execute();
+    $agenda_hoje = $stmt_agenda->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    // Em caso de erro na base de dados, registar e mostrar mensagem
+    error_log("Erro ao buscar dados para o dashboard: " . $e->getMessage());
+    $error_message = "Ocorreu um erro ao carregar os dados do dashboard.";
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-PT" class="bg-gray-100">
@@ -108,7 +141,7 @@ require_once '../config/db.php';
 
                 if ($pode_avaliar):
                 ?>
-                <a href="listar_funcionarios.php" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <a href="iniciar_avaliacao.php" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     <div class="flex items-center gap-4">
                         <div class="bg-teal-100 text-teal-600 p-3 rounded-full">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -148,6 +181,31 @@ require_once '../config/db.php';
                     </div>
                 </a>
                 <?php endif; ?>
+                <a href="calendario.php" class="block bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 col-span-1 sm:col-span-2 lg:col-span-1">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="bg-purple-100 text-purple-600 p-3 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-lg text-gray-800">Agenda do Dia</h2>
+                        <p class="text-sm text-gray-600">Eventos de hoje: <?= date('d/m/Y') ?></p>
+                    </div>
+                </div>
+                <div class="space-y-2 text-sm max-h-40 overflow-y-auto">
+                    <?php if (empty($agenda_hoje)): ?>
+                        <p class="text-gray-500 italic">Nenhum evento agendado para hoje.</p>
+                    <?php else: ?>
+                        <?php foreach ($agenda_hoje as $evento): ?>
+                            <div class="border-l-4 pl-3 <?= $evento['tipo_evento'] === 'Folga' ? 'border-orange-400' : ($evento['tipo_evento'] === 'Médico' ? 'border-red-400' : 'border-blue-400') ?>">
+                                <p class="font-medium text-gray-700"><?= htmlspecialchars($evento['titulo']) ?></p>
+                                <p class="text-xs text-gray-500"><?= htmlspecialchars($evento['funcionario_nome']) ?></p>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </a>
             </div>
         </div>
     </main>
