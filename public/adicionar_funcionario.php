@@ -1,109 +1,155 @@
 <?php
+require_once '../src/auth_guard.php'; // Incluir auth_guard para $utilizador_logado
 require_once '../config/db.php';
+require_once '../src/logger.php'; // Incluir logger
 
 $errors = [];
 $successMessage = '';
+$form_data = $_POST; // Manter dados em caso de erro
 
-// Valores pré-preenchidos para manter os dados no formulário em caso de erro
-$form_data = $_POST;
+// Definir $funcionario_id_a_editar (não aplicável aqui, mas para consistência)
+$funcionario_id_a_editar = null; 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 1. Obter e limpar os dados de ambas as tabelas
-    $nome_completo = trim($_POST['nome_completo'] ?? '');
+    // Obter dados do POST
     $numero_funcionario = trim($_POST['numero_funcionario'] ?? '');
+    $nome_completo = trim($_POST['nome_completo'] ?? '');
     $email_corporativo = trim($_POST['email_corporativo'] ?? '');
     $cargo = trim($_POST['cargo'] ?? '');
     $departamento = trim($_POST['departamento'] ?? '');
+    $sector_piscina = !empty($_POST['sector_piscina']) ? (int)$_POST['sector_piscina'] : null;
     $data_contratacao = trim($_POST['data_contratacao'] ?? '');
+    $data_fim_contrato = !empty($_POST['data_fim_contrato']) ? trim($_POST['data_fim_contrato']) : null;
+    $ativo = isset($_POST['ativo']) ? (int)$_POST['ativo'] : 1;
     $nfc_card_id = trim($_POST['nfc_card_id'] ?? '');
-    $sector_piscina = !empty($_POST['sector_piscina']) ? (int)$_POST['sector_piscina'] : null;   
-    
-    $cartao_cidadao = trim($_POST['cartao_cidadao'] ?? '');
+
     $nif = trim($_POST['nif'] ?? '');
     $nss = trim($_POST['nss'] ?? '');
-    $data_nascimento = trim($_POST['data_nascimento'] ?? '');
+    $cartao_cidadao = trim($_POST['cartao_cidadao'] ?? '');
+    $data_nascimento = !empty($_POST['data_nascimento']) ? trim($_POST['data_nascimento']) : null;
     $telemovel = trim($_POST['telemovel'] ?? '');
     $morada_completa = trim($_POST['morada_completa'] ?? '');
     $iban = trim($_POST['iban'] ?? '');
 
-    // Validação da Foto
-    $foto_path = null;
+    $folgas = $_POST['folgas'] ?? []; // Array de dias da semana para folgas
+    $data_inicio_ferias = trim($_POST['data_inicio_ferias'] ?? '');
+    $data_fim_ferias = trim($_POST['data_fim_ferias'] ?? '');
+    $ano_referencia = trim($_POST['ano_referencia'] ?? '');
+
+    // Inicializar variáveis da foto
+    $foto_tmp_name = null;
+    $foto_name = null;
+
+    // Validação da Foto (se foi enviada)
     if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
         $foto_tmp_name = $_FILES['foto']['tmp_name'];
+        $foto_name = $_FILES['foto']['name']; // Guardar nome original para extensão
         $foto_size = $_FILES['foto']['size'];
         $foto_type = mime_content_type($foto_tmp_name);
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
 
-        if ($foto_size > 2097152) { // 2MB
+        if ($foto_size > 2097152) { // 2MB Max
             $errors['foto'] = 'A foto não pode exceder 2MB.';
         }
         if (!in_array($foto_type, $allowed_types)) {
-            $errors['foto'] = 'Formato de ficheiro inválido. Apenas JPG, PNG e GIF são permitidos.';
+            $errors['foto'] = 'Formato inválido. Apenas JPG, PNG e GIF.';
         }
     }
 
-    // 2. Validação mais completa
-    if (empty($nome_completo)) $errors['nome_completo'] = 'O nome completo é obrigatório.';
+    // Outras Validações (essenciais)
     if (empty($numero_funcionario)) $errors['numero_funcionario'] = 'O número de funcionário é obrigatório.';
+    if (empty($nome_completo)) $errors['nome_completo'] = 'O nome completo é obrigatório.';
+    if (empty($email_corporativo) || !filter_var($email_corporativo, FILTER_VALIDATE_EMAIL)) $errors['email_corporativo'] = 'Email corporativo inválido.';
     if (empty($cargo)) $errors['cargo'] = 'O cargo é obrigatório.';
     if (empty($departamento)) $errors['departamento'] = 'O departamento é obrigatório.';
-    if (empty($data_contratacao)) $errors['data_contratacao'] = 'A data de contratação é obrigatória.';
-    if (!filter_var($email_corporativo, FILTER_VALIDATE_EMAIL)) $errors['email_corporativo'] = 'O formato do email é inválido.';
-    // Adicionar mais validações (ex: formato do NIF, IBAN, etc.) aqui se necessário
+    if (empty($data_contratacao)) $errors['data_contratacao'] = 'Data de contratação obrigatória.';
+    // Adicione mais validações conforme necessário (NIF, NSS, etc.)
 
-    // 3. Se não houver erros, inserir na BD
+    // Validação para férias iniciais (opcional, mas se preenchido, validar)
+    if (!empty($data_inicio_ferias) || !empty($data_fim_ferias)) {
+        if (empty($data_inicio_ferias)) $errors['data_inicio_ferias'] = 'Data de início de férias obrigatória se preenchido.';
+        if (empty($data_fim_ferias)) $errors['data_fim_ferias'] = 'Data de fim de férias obrigatória se preenchido.';
+        if (!empty($data_inicio_ferias) && !empty($data_fim_ferias) && strtotime($data_inicio_ferias) >= strtotime($data_fim_ferias)) {
+            $errors['data_fim_ferias'] = 'Data de fim deve ser após a data de início.';
+        }
+    }
+
+    // Se não houver erros, proceder com a inserção
     if (empty($errors)) {
+        $pdo->beginTransaction();
         try {
-            $pdo->beginTransaction();
-
-            // Inserir na tabela `funcionarios`            
+            // 1. Inserir dados na tabela `funcionarios` (sem foto_path ainda)
             $sql1 = "INSERT INTO funcionarios 
-                        (numero_funcionario, nome_completo, email_corporativo, cargo, departamento, data_contratacao, nfc_card_id, sector_piscina) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-                    
-            $stmt1 = $pdo->prepare($sql1); // <-- ESTA É A LINHA QUE FALTAVA
-            $stmt1->execute([$numero_funcionario, $nome_completo, $email_corporativo, $cargo, $departamento, $data_contratacao, $nfc_card_id, $sector_piscina, $status_servico]);
+                        (numero_funcionario, nome_completo, email_corporativo, cargo, departamento, sector_piscina, data_contratacao, data_fim_contrato, ativo, nfc_card_id) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // 10 placeholders
+            $stmt1 = $pdo->prepare($sql1);
+            $stmt1->execute([
+                $numero_funcionario, $nome_completo, $email_corporativo, $cargo, $departamento, 
+                $sector_piscina, $data_contratacao, $data_fim_contrato, $ativo, $nfc_card_id
+            ]); // 10 variáveis
+            
+            $funcionario_id = $pdo->lastInsertId(); // Obter o ID do novo funcionário
 
-            $funcionario_id = $pdo->lastInsertId();
-
-            // Inserir na tabela `funcionarios_dados_pessoais`
-            $sql2 = "INSERT INTO funcionarios_dados_pessoais (funcionario_id, nif, nss, cartao_cidadao, data_nascimento, telemovel, morada_completa, iban) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            // 2. Inserir dados na tabela `funcionarios_dados_pessoais`
+            $sql2 = "INSERT INTO funcionarios_dados_pessoais 
+                        (funcionario_id, nif, nss, cartao_cidadao, data_nascimento, telemovel, morada_completa, iban) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"; // 8 placeholders
             $stmt2 = $pdo->prepare($sql2);
-            $stmt2->execute([$funcionario_id, $nif, $nss, $cartao_cidadao, $data_nascimento, $telemovel, $morada_completa, $iban]);
+            $stmt2->execute([
+                $funcionario_id, $nif, $nss, $cartao_cidadao, $data_nascimento, $telemovel, $morada_completa, $iban
+            ]); // 8 variáveis
 
-            if (isset($foto_tmp_name)) {
-                // Criar um nome de ficheiro único usando o ID do funcionário
-                $foto_extension = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
-                $novo_nome_foto = $funcionario_id . '.' . strtolower($foto_extension);
-                
-                // Construir o caminho completo e seguro para o destino
-                $caminho_destino = realpath(__DIR__ . '/../storage/fotos_funcionarios') . '/' . $novo_nome_foto;
+            // 3. Processar e Mover a Foto (se foi enviada)
+            $novo_nome_foto = null;
+            if ($foto_tmp_name && $foto_name) {
+                $upload_dir = '../storage/fotos_funcionarios/';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+                $ext = pathinfo($foto_name, PATHINFO_EXTENSION);
+                $ext = strtolower($ext);
+                $novo_nome_foto = 'foto_' . $funcionario_id . '_' . time() . '.' . $ext;
+                $caminho_final = $upload_dir . $novo_nome_foto;
 
-                // Mover o ficheiro temporário para o destino final
-                if (move_uploaded_file($foto_tmp_name, $caminho_destino)) {
-                    // Se o upload foi bem sucedido, atualiza o registo do funcionário com o nome da foto
-                    $sql_update_foto = "UPDATE funcionarios SET foto_path = ? WHERE id = ?";
-                    $stmt_update = $pdo->prepare($sql_update_foto);
-                    $stmt_update->execute([$novo_nome_foto, $funcionario_id]);
-                } else {
-                    // Se não for possível mover o ficheiro, lança um erro para cancelar a transação
-                    throw new Exception("Não foi possível mover o ficheiro da foto para o destino.");
+                if (!move_uploaded_file($foto_tmp_name, $caminho_final)) {
+                    throw new Exception("Falha ao salvar a foto no servidor.");
+                }
+
+                // 4. Atualizar o registo do funcionário com o nome da foto
+                $sql_update_foto = "UPDATE funcionarios SET foto_path = ? WHERE id = ?";
+                $stmt_update = $pdo->prepare($sql_update_foto);
+                $stmt_update->execute([$novo_nome_foto, $funcionario_id]);
+            }
+
+            // 5. Inserir folgas semanais
+            if (!empty($folgas)) {
+                $sql_folga = "INSERT INTO folgas_semanais (funcionario_id, dia_semana) VALUES (?, ?)";
+                $stmt_folga = $pdo->prepare($sql_folga);
+                foreach ($folgas as $dia) {
+                    $stmt_folga->execute([$funcionario_id, (int)$dia]);
                 }
             }
 
-            $pdo->commit();
-
-            $successMessage = "Funcionário '$nome_completo' registado com sucesso!";
-            $form_data = []; // Limpar o formulário após sucesso
-
-        } catch (PDOException $e) {
-            $pdo->rollBack();
-            // Verificar se é um erro de duplicado (UNIQUE constraint)
-            if ($e->getCode() == 23000) {
-                 $errors['db'] = "Erro: O Email ou o ID do Cartão NFC já existem na base de dados.";
-            } else {
-                 $errors['db'] = "Erro ao registar o funcionário: " . $e->getMessage();
+            // 6. Inserir período de férias inicial (se preenchido)
+            if (!empty($data_inicio_ferias) && !empty($data_fim_ferias)) {
+                $sql_ferias = "INSERT INTO periodos_ferias (funcionario_id, data_inicio_ferias, data_fim_ferias, ano_referencia, aprovado) VALUES (?, ?, ?, ?, 1)";
+                $stmt_ferias = $pdo->prepare($sql_ferias);
+                $stmt_ferias->execute([$funcionario_id, $data_inicio_ferias, $data_fim_ferias, $ano_referencia]);
             }
+            
+            $pdo->commit(); // Confirmar tudo
+            $successMessage = "Funcionário '$nome_completo' registado com sucesso!";
+            
+            // Registar no log
+            log_event($pdo, 'INFO', 'EMPLOYEE_CREATED', "Novo funcionário '{$nome_completo}' (ID: {$funcionario_id}) foi registado.", $utilizador_logado['id']);
+
+            // Limpar dados do POST para não repreencher o formulário
+            $_POST = [];
+            $form_data = []; // Limpar também esta variável
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $errors['db'] = "Erro ao registar o funcionário: " . $e->getMessage();
         }
     }
 }
@@ -185,6 +231,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <div>
+                        <label for="data_fim_contrato" class="block text-sm font-medium text-gray-700 mb-1">Data Fim Contrato</label>
+                        <input type="date" id="data_fim_contrato" name="data_fim_contrato" value="<?= htmlspecialchars($form_data['data_fim_contrato'] ?? '') ?>" class="w-full px-4 py-2 border border-gray-300 rounded-md">
+                    </div>
+
+                    <div>
+                        <label for="ativo" class="block text-sm font-medium text-gray-700 mb-1">Status Inicial</label>
+                        <select id="ativo" name="ativo" class="w-full px-4 py-2 border border-gray-300 rounded-md">
+                            <option value="1" selected>Ativo</option>
+                            <option value="0">Inativo</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label for="nfc_card_id" class="block text-sm font-medium text-gray-700 mb-1">ID Cartão NFC</label>
                         <input type="text" id="nfc_card_id" name="nfc_card_id" value="<?= htmlspecialchars($form_data['nfc_card_id'] ?? '') ?>" class="w-full px-4 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
@@ -198,6 +257,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             hover:file:bg-blue-100
                         "/>
                         <?php if (isset($errors['foto'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['foto'] ?></p><?php endif; ?>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="mb-8">
+                <legend class="text-xl font-semibold text-gray-700 mb-6 border-b pb-2">Folgas Semanais</legend>
+                <div class="flex flex-row gap-4 flex-wrap">
+                    <?php $dias = ['Domingo' => 0, 'Segunda' => 1, 'Terça' => 2, 'Quarta' => 3, 'Quinta' => 4, 'Sexta' => 5, 'Sábado' => 6]; ?>
+                    <?php foreach ($dias as $dia_nome => $dia_num): ?>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="folga_<?= $dia_num ?>" name="folgas[]" value="<?= $dia_num ?>" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" <?= in_array($dia_num, $form_data['folgas'] ?? []) ? 'checked' : '' ?>>
+                            <label for="folga_<?= $dia_num ?>" class="ml-2 text-sm text-gray-700"><?= $dia_nome ?></label>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </fieldset>
+
+            <fieldset class="mb-8">
+                <legend class="text-xl font-semibold text-gray-700 mb-6 border-b pb-2">Período de Férias Inicial (Opcional)</legend>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="data_inicio_ferias" class="block text-sm font-medium text-gray-700 mb-1">Data Início Férias</label>
+                        <input type="date" id="data_inicio_ferias" name="data_inicio_ferias" value="<?= htmlspecialchars($form_data['data_inicio_ferias'] ?? '') ?>" class="w-full px-4 py-2 border rounded-md <?= isset($errors['data_inicio_ferias']) ? 'border-red-500' : 'border-gray-300' ?>">
+                        <?php if (isset($errors['data_inicio_ferias'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['data_inicio_ferias'] ?></p><?php endif; ?>
+                    </div>
+                    <div>
+                        <label for="data_fim_ferias" class="block text-sm font-medium text-gray-700 mb-1">Data Fim Férias</label>
+                        <input type="date" id="data_fim_ferias" name="data_fim_ferias" value="<?= htmlspecialchars($form_data['data_fim_ferias'] ?? '') ?>" class="w-full px-4 py-2 border rounded-md <?= isset($errors['data_fim_ferias']) ? 'border-red-500' : 'border-gray-300' ?>">
+                        <?php if (isset($errors['data_fim_ferias'])): ?><p class="text-red-500 text-xs mt-1"><?= $errors['data_fim_ferias'] ?></p><?php endif; ?>
+                    </div>
+                    <div>
+                        <label for="ano_referencia" class="block text-sm font-medium text-gray-700 mb-1">Ano de Referência</label>
+                        <input type="number" id="ano_referencia" name="ano_referencia" value="<?= htmlspecialchars($form_data['ano_referencia'] ?? date('Y')) ?>" class="w-full px-4 py-2 border rounded-md border-gray-300" min="1900" max="2100">
                     </div>
                 </div>
             </fieldset>

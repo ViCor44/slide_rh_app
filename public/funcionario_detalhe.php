@@ -81,6 +81,23 @@ try {
     $stmt_docs->execute([$funcionario_id]);
     $documentos = $stmt_docs->fetchAll(PDO::FETCH_ASSOC);
 
+    // Query para folgas semanais
+    $stmt_folgas = $pdo->prepare("SELECT dia_semana FROM folgas_semanais WHERE funcionario_id = ?");
+    $stmt_folgas->execute([$funcionario_id]);
+    $folgas = $stmt_folgas->fetchAll(PDO::FETCH_COLUMN);
+
+    // Converter dias numéricos para nomes
+    $dias_map = [0 => 'Domingo', 1 => 'Segunda-feira', 2 => 'Terça-feira', 3 => 'Quarta-feira', 4 => 'Quinta-feira', 5 => 'Sexta-feira', 6 => 'Sábado'];
+    $folgas_nomes = [];
+    foreach ($folgas as $dia) {
+        $folgas_nomes[] = $dias_map[$dia] ?? 'Desconhecido';
+    }
+
+    // Query para períodos de férias
+    $stmt_ferias = $pdo->prepare("SELECT * FROM periodos_ferias WHERE funcionario_id = ? ORDER BY data_inicio_ferias ASC");
+    $stmt_ferias->execute([$funcionario_id]);
+    $ferias = $stmt_ferias->fetchAll(PDO::FETCH_ASSOC);
+
     // --- LÓGICA PARA AS MÉDIAS DAS AVALIAÇÕES ---
     // 1. Ir buscar a média de cada métrica
     $stmt_medias_metricas = $pdo->prepare("
@@ -165,6 +182,14 @@ try {
                             <dt class="text-sm font-medium text-gray-500">Data de Contratação</dt>
                             <dd class="text-gray-900 mb-3"><?= htmlspecialchars(date('d/m/Y', strtotime($funcionario['data_contratacao']))) ?></dd>
 
+                            <dt class="text-sm font-medium text-gray-500">Data Fim Contrato</dt>
+                            <dd class="text-gray-900 mb-3"><?= $funcionario['data_fim_contrato'] ? htmlspecialchars(date('d/m/Y', strtotime($funcionario['data_fim_contrato']))) : 'Sem data definida' ?></dd>
+
+                            <dt class="text-sm font-medium text-gray-500">Status na Empresa</dt>
+                            <dd class="font-semibold <?= ($funcionario['ativo'] == 1) ? 'text-green-600' : 'text-red-600' ?>">
+                                <?= ($funcionario['ativo'] == 1) ? 'Ativo' : 'Inativo' ?>
+                            </dd>
+
                             <?php if ($funcionario['departamento'] === 'Piscinas' && !empty($funcionario['sector_piscina'])): ?>
                                 <dt class="text-sm font-medium text-gray-500">Sector Piscina</dt>
                                 <dd class="text-gray-900 mb-3"><?= htmlspecialchars($funcionario['sector_piscina']) ?></dd>
@@ -174,6 +199,47 @@ try {
                             <dd class="text-gray-900 font-mono mb-3"><?= htmlspecialchars($funcionario['nfc_card_id'] ?? 'N/A') ?></dd>
                             
                         </dl>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4">Folgas Semanais</h2>
+                        <?php if (empty($folgas_nomes)): ?>
+                            <p class="text-center text-gray-500 py-4">Nenhuma folga semanal definida.</p>
+                        <?php else: ?>
+                            <div class="flex flex-wrap gap-2">
+                                <?php foreach ($folgas_nomes as $dia): ?>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"><?= htmlspecialchars($dia) ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4">Períodos de Férias</h2>
+                        <?php if (empty($ferias)): ?>
+                            <p class="text-center text-gray-500 py-4">Nenhum período de férias registado.</p>
+                        <?php else: ?>
+                            <table class="min-w-full bg-white border border-gray-300">
+                                <thead>
+                                    <tr>
+                                        <th class="px-4 py-2 border-b">Início</th>
+                                        <th class="px-4 py-2 border-b">Fim</th>
+                                        <th class="px-4 py-2 border-b">Ano Referência</th>
+                                        <th class="px-4 py-2 border-b">Aprovado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($ferias as $feria): ?>
+                                        <tr>
+                                            <td class="px-4 py-2 border-b"><?= date('d/m/Y', strtotime($feria['data_inicio_ferias'])) ?></td>
+                                            <td class="px-4 py-2 border-b"><?= date('d/m/Y', strtotime($feria['data_fim_ferias'])) ?></td>
+                                            <td class="px-4 py-2 border-b"><?= htmlspecialchars($feria['ano_referencia'] ?? 'N/A') ?></td>
+                                            <td class="px-4 py-2 border-b"><?= $feria['aprovado'] ? 'Sim' : 'Não' ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -209,6 +275,8 @@ try {
                             </dl>
                         </div>
                     <?php endif; ?>
+
+                    
                     
                     <?php if ((int)$utilizador_logado['role_id'] === ROLE_ADMIN || (int)$utilizador_logado['role_id'] === ROLE_RH): ?>
                         <div class="bg-white rounded-lg shadow-md p-6">

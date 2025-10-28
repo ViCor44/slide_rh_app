@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Tempo de geração: 28-Out-2025 às 00:01
+-- Tempo de geração: 28-Out-2025 às 23:48
 -- Versão do servidor: 10.4.32-MariaDB
 -- versão do PHP: 8.0.30
 
@@ -144,6 +144,26 @@ INSERT INTO `avaliacoes` (`id`, `funcionario_id`, `avaliador_user_id`, `periodo`
 -- --------------------------------------------------------
 
 --
+-- Estrutura da tabela `folgas_semanais`
+--
+
+CREATE TABLE `folgas_semanais` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `funcionario_id` int(10) UNSIGNED NOT NULL,
+  `dia_semana` tinyint(4) NOT NULL COMMENT '0=Domingo, 1=Segunda, ..., 6=Sábado'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Extraindo dados da tabela `folgas_semanais`
+--
+
+INSERT INTO `folgas_semanais` (`id`, `funcionario_id`, `dia_semana`) VALUES
+(1, 9, 5),
+(2, 9, 6);
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura da tabela `funcionarios`
 --
 
@@ -158,6 +178,7 @@ CREATE TABLE `funcionarios` (
   `foto_path` varchar(255) DEFAULT NULL,
   `nfc_card_id` varchar(50) DEFAULT NULL,
   `data_contratacao` date NOT NULL,
+  `data_fim_contrato` date DEFAULT NULL,
   `ativo` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -167,13 +188,14 @@ CREATE TABLE `funcionarios` (
 -- Extraindo dados da tabela `funcionarios`
 --
 
-INSERT INTO `funcionarios` (`id`, `numero_funcionario`, `nome_completo`, `email_corporativo`, `cargo`, `departamento`, `sector_piscina`, `foto_path`, `nfc_card_id`, `data_contratacao`, `ativo`, `created_at`, `updated_at`) VALUES
-(1, '101', 'Sofia Alves', 'sofia.alves@slideapp.pt', 'Diretora Geral', 'Administração', NULL, '1.jpg', NULL, '2020-01-15', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
-(2, '205', 'Ricardo Mendes', 'ricardo.mendes@slideapp.pt', 'Técnico de RH', 'Recursos Humanos', NULL, '2.jpg', NULL, '2021-03-22', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
-(3, '310', 'Joana Pinto', 'joana.pinto@slideapp.pt', 'Chefe de Equipa', 'Piscinas', NULL, '3.jpg', NULL, '2019-05-10', 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
-(4, '311', 'Carlos Martins', 'carlos.martins@slideapp.pt', 'Nadador Salvador', 'Piscinas', 3, '4.jpg', '', '2022-06-01', 1, '2025-10-21 19:47:12', '2025-10-25 13:45:54'),
-(5, '452', 'Ana Pereira', 'ana.pereira@slideapp.pt', 'Operadora de Caixa', 'Restauração', NULL, NULL, NULL, '2023-04-12', 1, '2025-10-21 19:47:12', '2025-10-21 19:47:12'),
-(6, '999', 'Laura Neves', 'laura.neves@email.com', 'Chefe de Equipa', 'Restauração', NULL, NULL, NULL, '2025-10-21', 1, '2025-10-21 19:47:12', '2025-10-22 18:08:57');
+INSERT INTO `funcionarios` (`id`, `numero_funcionario`, `nome_completo`, `email_corporativo`, `cargo`, `departamento`, `sector_piscina`, `foto_path`, `nfc_card_id`, `data_contratacao`, `data_fim_contrato`, `ativo`, `created_at`, `updated_at`) VALUES
+(1, '101', 'Sofia Alves', 'sofia.alves@slideapp.pt', 'Diretora Geral', 'Administração', NULL, '1.jpg', NULL, '2020-01-15', NULL, 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
+(2, '205', 'Ricardo Mendes', 'ricardo.mendes@slideapp.pt', 'Técnico de RH', 'Recursos Humanos', NULL, '2.jpg', NULL, '2021-03-22', NULL, 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
+(3, '310', 'Joana Pinto', 'joana.pinto@slideapp.pt', 'Chefe de Equipa', 'Piscinas', NULL, '3.jpg', NULL, '2019-05-10', NULL, 1, '2025-10-21 19:47:12', '2025-10-22 20:36:12'),
+(4, '311', 'Carlos Martins', 'carlos.martins@slideapp.pt', 'Nadador Salvador', 'Piscinas', 3, '4.jpg', '', '2022-06-01', NULL, 1, '2025-10-21 19:47:12', '2025-10-25 13:45:54'),
+(5, '452', 'Ana Pereira', 'ana.pereira@slideapp.pt', 'Operadora de Caixa', 'Restauração', NULL, NULL, NULL, '2023-04-12', NULL, 1, '2025-10-21 19:47:12', '2025-10-21 19:47:12'),
+(6, '999', 'Laura Neves', 'laura.neves@email.com', 'Chefe de Equipa', 'Restauração', NULL, NULL, NULL, '2025-10-21', NULL, 1, '2025-10-21 19:47:12', '2025-10-22 18:08:57'),
+(9, '6', 'Victor João Pinto Aurélio Correia', 'victor.a.correia@gmail.com', 'Técnico de Manutenção', 'Piscinas', NULL, 'foto_9_1761688196.png', '123456789', '1987-06-08', NULL, 1, '2025-10-28 21:00:27', '2025-10-28 21:49:56');
 
 -- --------------------------------------------------------
 
@@ -199,7 +221,8 @@ CREATE TABLE `funcionarios_dados_pessoais` (
 INSERT INTO `funcionarios_dados_pessoais` (`funcionario_id`, `nif`, `nss`, `cartao_cidadao`, `data_nascimento`, `telemovel`, `morada_completa`, `iban`) VALUES
 (1, '234567890', NULL, NULL, NULL, '912345678', NULL, NULL),
 (3, '345678901', NULL, NULL, NULL, '923456789', NULL, NULL),
-(4, '456789012', '', '', '0000-00-00', '934567890', '', '');
+(4, '456789012', '', '', '0000-00-00', '934567890', '', ''),
+(9, '192249223', '12012345678', '8542515', '1969-04-08', '967930476', 'Rua da Pedra, Bloco 10-B, Apartamento 58', '001821445211225587712332');
 
 -- --------------------------------------------------------
 
@@ -259,6 +282,22 @@ INSERT INTO `logs` (`id`, `level`, `event_type`, `message`, `user_id`, `ip_addre
 (18, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'joana.pinto@slideapp.pt\' fez login com sucesso.', 3, '::1', NULL, '2025-10-27 20:00:27'),
 (19, 'INFO', 'LOGIN_SUCCESS', 'Utilizador \'admin@slideapp.pt\' fez login com sucesso.', 6, '::1', NULL, '2025-10-27 21:46:03'),
 (20, 'INFO', 'GROUP_SCHEDULE_CREATED', 'Agendamento \'Formação Gestão do Tempo\' criado para múltiplos funcionários (Ana Pereira, Carlos Martins, Laura Neves).', 6, '::1', '{\"employee_ids\":[\"5\",\"4\",\"6\"]}', '2025-10-27 22:58:25');
+
+-- --------------------------------------------------------
+
+--
+-- Estrutura da tabela `periodos_ferias`
+--
+
+CREATE TABLE `periodos_ferias` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `funcionario_id` int(10) UNSIGNED NOT NULL,
+  `data_inicio_ferias` date NOT NULL,
+  `data_fim_ferias` date NOT NULL,
+  `ano_referencia` year(4) DEFAULT NULL COMMENT 'Ano a que as férias se referem',
+  `aprovado` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -349,6 +388,13 @@ ALTER TABLE `avaliacoes`
   ADD KEY `fk_avaliacao_avaliador` (`avaliador_user_id`);
 
 --
+-- Índices para tabela `folgas_semanais`
+--
+ALTER TABLE `folgas_semanais`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_func_dia` (`funcionario_id`,`dia_semana`);
+
+--
 -- Índices para tabela `funcionarios`
 --
 ALTER TABLE `funcionarios`
@@ -383,6 +429,13 @@ ALTER TABLE `logs`
   ADD KEY `idx_level` (`level`),
   ADD KEY `idx_event_type` (`event_type`),
   ADD KEY `idx_user_id` (`user_id`);
+
+--
+-- Índices para tabela `periodos_ferias`
+--
+ALTER TABLE `periodos_ferias`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_ferias_funcionario` (`funcionario_id`);
 
 --
 -- Índices para tabela `roles`
@@ -429,10 +482,16 @@ ALTER TABLE `avaliacoes`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
+-- AUTO_INCREMENT de tabela `folgas_semanais`
+--
+ALTER TABLE `folgas_semanais`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT de tabela `funcionarios`
 --
 ALTER TABLE `funcionarios`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT de tabela `funcionario_documentos`
@@ -445,6 +504,12 @@ ALTER TABLE `funcionario_documentos`
 --
 ALTER TABLE `logs`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+
+--
+-- AUTO_INCREMENT de tabela `periodos_ferias`
+--
+ALTER TABLE `periodos_ferias`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de tabela `roles`
@@ -484,6 +549,12 @@ ALTER TABLE `avaliacoes`
   ADD CONSTRAINT `fk_avaliacao_funcionario` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionarios` (`id`) ON DELETE CASCADE;
 
 --
+-- Limitadores para a tabela `folgas_semanais`
+--
+ALTER TABLE `folgas_semanais`
+  ADD CONSTRAINT `fk_folga_funcionario` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionarios` (`id`) ON DELETE CASCADE;
+
+--
 -- Limitadores para a tabela `funcionarios_dados_pessoais`
 --
 ALTER TABLE `funcionarios_dados_pessoais`
@@ -495,6 +566,12 @@ ALTER TABLE `funcionarios_dados_pessoais`
 ALTER TABLE `funcionario_documentos`
   ADD CONSTRAINT `fk_documento_funcionario` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionarios` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_documento_uploader` FOREIGN KEY (`uploaded_by_user_id`) REFERENCES `utilizadores` (`id`) ON DELETE SET NULL;
+
+--
+-- Limitadores para a tabela `periodos_ferias`
+--
+ALTER TABLE `periodos_ferias`
+  ADD CONSTRAINT `fk_ferias_funcionario` FOREIGN KEY (`funcionario_id`) REFERENCES `funcionarios` (`id`) ON DELETE CASCADE;
 
 --
 -- Limitadores para a tabela `utilizadores`

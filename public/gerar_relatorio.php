@@ -496,6 +496,78 @@ try {
             $html = ob_get_clean();
             break; // Fim do case 'relatorio_individual'
 
+        // ===============================================================
+        // 6. NOVO: LISTA DE FUNCIONÁRIOS DE BAIXA MÉDICA
+        // ===============================================================
+        case 'lista_baixas':
+            $report_title = 'Funcionários Atualmente de Baixa Médica';
+            // Permissão: Quem pode ver este relatório? (Ex: Admin, RH, Manager, Supervisor)
+            if ($logged_in_role_id !== ROLE_ADMIN && $logged_in_role_id !== ROLE_RH && $logged_in_role_id !== ROLE_MANAGER && $logged_in_role_id !== ROLE_SUPERVISOR) {
+                 header('Location: acesso_negado.php'); exit;
+             }
+
+            // Query para encontrar funcionários com agendamento do tipo 'Médico' ativo hoje
+            $hoje = date('Y-m-d H:i:s');
+            $sql = "SELECT DISTINCT f.id, f.numero_funcionario, f.nome_completo, f.departamento, a.data_inicio, a.data_fim, a.titulo
+                    FROM funcionarios f
+                    JOIN agendamentos a ON f.id = a.funcionario_id
+                    WHERE f.ativo = 1 
+                      AND (LOWER(a.tipo_evento) = 'médico' OR LOWER(a.tipo_evento) = 'baixa médica')
+                      AND a.data_inicio <= :hoje 
+                      AND (a.data_fim IS NULL OR a.data_fim >= :hoje)
+                    ORDER BY f.nome_completo ASC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':hoje', $hoje);
+            $stmt->execute();
+            $funcionarios_de_baixa = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            ob_start();
+            ?>
+            <style>
+                body { font-family: 'Helvetica', sans-serif; font-size: 11px; }
+                h1 { text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; font-size: 18px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+                thead { background-color: #f2f2f2; }
+                .footer { position: fixed; bottom: -20px; left: 0; right: 0; width: 100%; text-align: center; font-size: 9px; color: #999; }
+            </style>
+            <h1><?= htmlspecialchars($report_title) ?></h1>
+            <p>Relatório gerado em: <?= date('d/m/Y H:i') ?></p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nº</th>
+                        <th>Nome Completo</th>
+                        <th>Departamento</th>
+                        <th>Início da Baixa</th>
+                        <th>Fim Previsto</th>
+                        <th>Observação (Título do Agend.)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($funcionarios_de_baixa)): ?>
+                        <tr><td colspan="6" style="text-align:center; padding: 20px;">Nenhum funcionário encontrado de baixa médica atualmente.</td></tr>
+                    <?php else: foreach ($funcionarios_de_baixa as $func): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($func['numero_funcionario']) ?></td>
+                            <td><?= htmlspecialchars($func['nome_completo']) ?></td>
+                            <td><?= htmlspecialchars($func['departamento']) ?></td>
+                            <td><?= htmlspecialchars(date('d/m/Y', strtotime($func['data_inicio']))) ?></td>
+                            <td><?= $func['data_fim'] ? htmlspecialchars(date('d/m/Y', strtotime($func['data_fim']))) : 'Indeterminado' ?></td>
+                            <td><?= htmlspecialchars($func['titulo']) ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+            <div class="footer">
+                 CrewSync | Gerado por <?= htmlspecialchars($utilizador_logado['nome'] ?? 'N/A') ?>
+            </div>
+            <?php
+            $html = ob_get_clean();
+            $pdf_orientation = 'landscape'; // Paisagem pode ser melhor se houver muitas colunas
+            break; // Fim do case 'lista_baixas'
+
         default:
             die("Relatório desconhecido.");
     }

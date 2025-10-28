@@ -46,6 +46,10 @@ $funcionarios = $pdo->query("SELECT id, nome_completo, numero_funcionario FROM f
                             
                             <?php $role_id = (int)$utilizador_logado['role_id']; ?>
 
+                            <?php if ($role_id === ROLE_ADMIN || $role_id === ROLE_RH || $role_id === ROLE_MANAGER || $role_id === ROLE_SUPERVISOR): ?>
+                                <option value="lista_baixas">Lista de Funcionários Atualmente de Baixa</option>
+                            <?php endif; ?>
+
                             <?php if ($role_id === ROLE_ADMIN || $role_id === ROLE_RH): ?>
                                 <option value="relatorio_individual">Relatório Individual de Funcionário</option>
                             <?php endif; ?>
